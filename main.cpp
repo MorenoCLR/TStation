@@ -11,53 +11,18 @@ struct Passenger {
     string origin;
     string destination;
     Passenger* next;
-
-    Passenger(string pid, string fname, string lname, string porigin, string pdestination) {
-        id = pid;
-        firstName = fname;
-        lastName = lname;
-        origin = porigin;
-        destination = pdestination;
-        next = nullptr;
-    }
 };
 
 struct Seat {
     string seatId;
     Passenger* passenger;
     Seat* next;
-
-    Seat(string sid) {
-        seatId = sid;
-        passenger = nullptr;
-        next = nullptr;
-    }
 };
 
 struct Wagon {
     int number;
     Seat* seatsHead;
     Wagon* next;
-
-    Wagon(int num) {
-        number = num;
-        seatsHead = nullptr;
-        next = nullptr;
-
-        // Initialize seats in the wagon (manual linked list).
-        Seat* tail = nullptr;
-        for (char row = 'A'; row <= 'D'; ++row) {
-            for (int col = 1; col <= 20; ++col) {
-                Seat* newSeat = new Seat(to_string(col) + row);
-                if (!seatsHead) {
-                    seatsHead = newSeat;
-                } else {
-                    tail->next = newSeat;
-                }
-                tail = newSeat;
-            }
-        }
-    }
 };
 
 struct Train {
@@ -65,195 +30,141 @@ struct Train {
     string stoppingStations[10];
     int numStations;
     Wagon* wagonsHead;
-
-    Train(int tid, const string* stations, int stationCount, int numWagons) {
-        id = tid;
-        numStations = stationCount;
-        for (int i = 0; i < stationCount; ++i) {
-            stoppingStations[i] = stations[i];
-        }
-        wagonsHead = nullptr;
-
-        // Initialize wagons (manual linked list).
-        Wagon* tail = nullptr;
-        for (int i = 1; i <= numWagons; ++i) {
-            Wagon* newWagon = new Wagon(i);
-            if (!wagonsHead) {
-                wagonsHead = newWagon;
-            } else {
-                tail->next = newWagon;
-            }
-            tail = newWagon;
-        }
-    }
 };
 
-class TrainSystem {
-private:
-    map<int, Train*> trains;
+// Function to initialize a wagon with seats.
+Wagon* createWagon(int num) {
+    Wagon* wagon = new Wagon;
+    wagon->number = num;
+    wagon->seatsHead = NULL;
+    wagon->next = NULL;
 
-public:
-    void addTrain(int id, const string* stations, int stationCount, int numWagons) {
-        if (trains.find(id) != trains.end()) {
-            cout << "Train with ID " << id << " already exists.\n";
-            return;
+    Seat* tail = NULL;
+    for (char row = 'A'; row <= 'D'; ++row) {
+        for (int col = 1; col <= 20; ++col) {
+            Seat* newSeat = new Seat;
+            newSeat->seatId = to_string(col) + row;
+            newSeat->passenger = NULL;
+            newSeat->next = NULL;
+
+            if (!wagon->seatsHead) {
+                wagon->seatsHead = newSeat;
+            } else {
+                tail->next = newSeat;
+            }
+            tail = newSeat;
         }
-        trains[id] = new Train(id, stations, stationCount, numWagons);
     }
+    return wagon;
+}
 
-    void addPassengerInteractive() {
-        int trainId, wagonNum;
-        string seatId, pid, firstName, lastName, origin, destination;
+// Function to initialize a train with wagons.
+Train* createTrain(int id, const string* stations, int stationCount, int numWagons) {
+    Train* train = new Train;
+    train->id = id;
+    train->numStations = stationCount;
+    for (int i = 0; i < stationCount; ++i) {
+        train->stoppingStations[i] = stations[i];
+    }
+    train->wagonsHead = NULL;
 
-        cout << "Enter Train ID: ";
-        cin >> trainId;
-        if (trains.find(trainId) == trains.end()) {
-            cout << "Train not found.\n";
-            return;
-        }
-
-        cout << "Enter Wagon Number: ";
-        cin >> wagonNum;
-
-        Train* train = trains[trainId];
-        Wagon* currentWagon = train->wagonsHead;
-        for (int i = 1; i < wagonNum && currentWagon; ++i) {
-            currentWagon = currentWagon->next;
-        }
-        if (!currentWagon) {
-            cout << "Invalid Wagon Number.\n";
-            return;
-        }
-
-        cout << "Enter Seat ID (e.g., 1A): ";
-        cin >> seatId;
-
-        cout << "Enter Passenger ID: ";
-        cin >> pid;
-
-        cout << "Enter First Name: ";
-        cin.ignore();
-        getline(cin, firstName);
-
-        cout << "Enter Last Name: ";
-        getline(cin, lastName);
-
-        cout << "Enter Origin: ";
-        getline(cin, origin);
-
-        cout << "Enter Destination: ";
-        getline(cin, destination);
-
-        if (firstName.empty() || lastName.empty()) {
-            cout << "Both first and last names are required.\n";
-            return;
-        }
-
-        Passenger passenger(pid, firstName, lastName, origin, destination);
-        if (addPassenger(train, currentWagon, seatId, passenger)) {
-            cout << "Passenger added successfully!\n";
+    Wagon* tail = NULL;
+    for (int i = 1; i <= numWagons; ++i) {
+        Wagon* newWagon = createWagon(i);
+        if (!train->wagonsHead) {
+            train->wagonsHead = newWagon;
         } else {
-            cout << "Failed to add passenger. Seat may already be occupied.\n";
+            tail->next = newWagon;
         }
+        tail = newWagon;
     }
+    return train;
+}
 
-    bool addPassenger(Train* train, Wagon* wagon, const string& seatId, const Passenger& passenger) {
-        Seat* currentSeat = wagon->seatsHead;
-        while (currentSeat) {
-            if (currentSeat->seatId == seatId && !currentSeat->passenger) {
-                currentSeat->passenger = new Passenger(passenger);
-                return true;
-            }
-            currentSeat = currentSeat->next;
-        }
-        return false;
+// Function to add a passenger to a specific seat.
+bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger) {
+    Wagon* currentWagon = train->wagonsHead;
+    for (int i = 1; i < wagonNum && currentWagon; ++i) {
+        currentWagon = currentWagon->next;
     }
+    if (!currentWagon) return false;
 
-    void searchPassengersByName(const string& firstName, const string& lastName) {
-        bool found = false;
-        for (const auto& trainPair : trains) {
-            Train* train = trainPair.second;
-            Wagon* currentWagon = train->wagonsHead;
-
-            while (currentWagon) {
-                Seat* currentSeat = currentWagon->seatsHead;
-                while (currentSeat) {
-                    if (currentSeat->passenger) {
-                        Passenger* passenger = currentSeat->passenger;
-                        bool firstNameMatches = (firstName == "-" || passenger->firstName == firstName);
-                        bool lastNameMatches = (lastName == "-" || passenger->lastName == lastName);
-
-                        if (firstNameMatches && lastNameMatches) {
-                            cout << "Passenger Found: " << passenger->firstName << " " << passenger->lastName
-                                 << " (ID: " << passenger->id << "), Train ID: " << train->id
-                                 << ", Wagon: " << currentWagon->number << ", Seat: " << currentSeat->seatId
-                                 << ", From: " << passenger->origin << " to " << passenger->destination << "\n";
-                            found = true;
-                        }
-                    }
-                    currentSeat = currentSeat->next;
-                }
-                currentWagon = currentWagon->next;
-            }
+    Seat* currentSeat = currentWagon->seatsHead;
+    while (currentSeat) {
+        if (currentSeat->seatId == seatId && !currentSeat->passenger) {
+            currentSeat->passenger = new Passenger(passenger);
+            return true;
         }
-        if (!found) {
-            cout << "No passengers found with the given name.\n";
-        }
+        currentSeat = currentSeat->next;
     }
+    return false;
+}
 
-    void displayPassengersOnTrain(int trainId) {
-        if (trains.find(trainId) == trains.end()) {
-            cout << "Train with ID " << trainId << " not found.\n";
-            return;
-        }
-
-        Train* train = trains[trainId];
+// Function to search for passengers by name.
+void searchPassengersByName(const map<int, Train*>& trains, const string& firstName, const string& lastName) {
+    bool found = false;
+    for (const auto& trainPair : trains) {
+        Train* train = trainPair.second;
         Wagon* currentWagon = train->wagonsHead;
 
-        cout << "Passengers on Train ID: " << trainId << "\n";
         while (currentWagon) {
             Seat* currentSeat = currentWagon->seatsHead;
             while (currentSeat) {
                 if (currentSeat->passenger) {
                     Passenger* passenger = currentSeat->passenger;
-                    cout << "Name: " << passenger->firstName << " " << passenger->lastName
-                         << ", Seat: " << currentSeat->seatId
-                         << ", Wagon: " << currentWagon->number << "\n";
+                    bool firstNameMatches = (firstName == "-" || passenger->firstName == firstName);
+                    bool lastNameMatches = (lastName == "-" || passenger->lastName == lastName);
+
+                    if (firstNameMatches && lastNameMatches) {
+                        cout << "Passenger Found: " << passenger->firstName << " " << passenger->lastName
+                             << " (ID: " << passenger->id << "), Train ID: " << train->id
+                             << ", Wagon: " << currentWagon->number << ", Seat: " << currentSeat->seatId
+                             << ", From: " << passenger->origin << " to " << passenger->destination << "\n";
+                        found = true;
+                    }
                 }
                 currentSeat = currentSeat->next;
             }
             currentWagon = currentWagon->next;
         }
     }
-
-    ~TrainSystem() {
-        for (auto& trainPair : trains) {
-            Train* train = trainPair.second;
-            Wagon* currentWagon = train->wagonsHead;
-
-            while (currentWagon) {
-                Seat* currentSeat = currentWagon->seatsHead;
-                while (currentSeat) {
-                    delete currentSeat->passenger;
-                    Seat* tempSeat = currentSeat;
-                    currentSeat = currentSeat->next;
-                    delete tempSeat;
-                }
-                Wagon* tempWagon = currentWagon;
-                currentWagon = currentWagon->next;
-                delete tempWagon;
-            }
-            delete train;
-        }
+    if (!found) {
+        cout << "No passengers found with the given name.\n";
     }
-};
+}
+
+// Function to display all passengers on a train.
+void displayPassengersOnTrain(const map<int, Train*>& trains, int trainId) {
+    if (trains.find(trainId) == trains.end()) {
+        cout << "Train with ID " << trainId << " not found.\n";
+        return;
+    }
+
+    Train* train = trains.at(trainId);
+    Wagon* currentWagon = train->wagonsHead;
+
+    cout << "Passengers on Train ID: " << trainId << "\n";
+    while (currentWagon) {
+        Seat* currentSeat = currentWagon->seatsHead;
+        while (currentSeat) {
+            if (currentSeat->passenger) {
+                Passenger* passenger = currentSeat->passenger;
+                cout << "Name: " << passenger->firstName << " " << passenger->lastName
+                     << ", Seat: " << currentSeat->seatId
+                     << ", Wagon: " << currentWagon->number << "\n";
+            }
+            currentSeat = currentSeat->next;
+        }
+        currentWagon = currentWagon->next;
+    }
+}
 
 int main() {
-    TrainSystem system;
+    map<int, Train*> trains;
 
     // Predefined trains.
     string stations1[] = {"CityA", "CityB", "CityC"};
-    system.addTrain(1, stations1, 3, 6);
+    trains[1] = createTrain(1, stations1, 3, 6);
 
     while (true) {
         cout << "\nMenu:\n";
@@ -267,7 +178,49 @@ int main() {
         cin >> choice;
 
         if (choice == 1) {
-            system.addPassengerInteractive();
+            int trainId, wagonNum;
+            string seatId, pid, firstName, lastName, origin, destination;
+
+            cout << "Enter Train ID: ";
+            cin >> trainId;
+            if (trains.find(trainId) == trains.end()) {
+                cout << "Train not found.\n";
+                continue;
+            }
+
+            cout << "Enter Wagon Number: ";
+            cin >> wagonNum;
+
+            cout << "Enter Seat ID (e.g., 1A): ";
+            cin >> seatId;
+
+            cout << "Enter Passenger ID: ";
+            cin >> pid;
+
+            cout << "Enter First Name: ";
+            cin.ignore();
+            getline(cin, firstName);
+
+            cout << "Enter Last Name: ";
+            getline(cin, lastName);
+
+            cout << "Enter Origin: ";
+            getline(cin, origin);
+
+            cout << "Enter Destination: ";
+            getline(cin, destination);
+
+            if (firstName.empty() || lastName.empty()) {
+                cout << "Both first and last names are required.\n";
+                continue;
+            }
+
+            Passenger passenger = {pid, firstName, lastName, origin, destination, NULL};
+            if (addPassenger(trains[trainId], wagonNum, seatId, passenger)) {
+                cout << "Passenger added successfully!\n";
+            } else {
+                cout << "Failed to add passenger. Seat may already be occupied.\n";
+            }
         } else if (choice == 2) {
             string firstName, lastName;
             cout << "Enter First Name (or '-' if empty): ";
@@ -277,17 +230,37 @@ int main() {
             cout << "Enter Last Name (or '-' if empty): ";
             getline(cin, lastName);
 
-            system.searchPassengersByName(firstName, lastName);
+            searchPassengersByName(trains, firstName, lastName);
         } else if (choice == 3) {
             int trainId;
             cout << "Enter Train ID: ";
             cin >> trainId;
-            system.displayPassengersOnTrain(trainId);
+            displayPassengersOnTrain(trains, trainId);
         } else if (choice == 4) {
             break;
         } else {
             cout << "Invalid choice. Please try again.\n";
         }
+    }
+
+    // Clean up allocated memory.
+    for (auto& trainPair : trains) {
+        Train* train = trainPair.second;
+        Wagon* currentWagon = train->wagonsHead;
+
+        while (currentWagon) {
+            Seat* currentSeat = currentWagon->seatsHead;
+            while (currentSeat) {
+                delete currentSeat->passenger;
+                Seat* tempSeat = currentSeat;
+                currentSeat = currentSeat->next;
+                delete tempSeat;
+            }
+            Wagon* tempWagon = currentWagon;
+            currentWagon = currentWagon->next;
+            delete tempWagon;
+        }
+        delete train;
     }
 
     return 0;

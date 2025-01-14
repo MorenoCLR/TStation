@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1736873976 source:c:\users\mclr\documents\tel-u\std\tstation\main.cpp
+	<iostream>
+	<string>
+	<map>
+
+1736875586 source:c:\users\mclr\documents\tel-u\std\tstation\express.cpp
+
