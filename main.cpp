@@ -1,290 +1,334 @@
-#include <iostream>
-#include <string>
-#include <map>
-#include <vector>
+    #include <iostream>
+    using namespace std;
 
-using namespace std;
+    struct Passenger {
+        string id;
+        string firstName;
+        string lastName;
+        string origin;
+        string destination;
+        Passenger* next;
+    };
 
-struct Passenger {
-    string id;
-    string firstName;
-    string lastName;
-    string origin;
-    string destination;
-    Passenger* next;
-};
+    struct Seat {
+        string seatId;
+        Passenger* passenger;
+        Seat* next;
+    };
 
-struct Seat {
-    string seatId;
-    Passenger* passenger;
-    Seat* next;
-};
+    struct Wagon {
+        int number;
+        Seat* seatsHead;
+        Wagon* next;
+    };
 
-struct Wagon {
-    int number;
-    Seat* seatsHead;
-    Wagon* next;
-};
+    struct CityNode;  // Forward declaration
 
-struct Train {
-    int id;
-    string stoppingStations[10];
-    int numStations;
-    Wagon* wagonsHead;
-};
+    struct Train {
+        int id;
+        CityNode* origin;
+        CityNode* destination;
+        string stoppingStations[10];
+        int numStations;
+        Wagon* wagonsHead;
+        Train* nextTrain;
+    };
 
-// Function to initialize a wagon with seats.
-Wagon* createWagon(int num) {
-    Wagon* wagon = new Wagon;
-    wagon->number = num;
-    wagon->seatsHead = NULL;
-    wagon->next = NULL;
+    struct RouteNode {
+        CityNode* destination;  // Pointer to the destination city
+        Train* train;           // Pointer to the train connecting the cities
+        RouteNode* nextRoute;
+    };
 
-    Seat* tail = NULL;
-    for (char row = 'A'; row <= 'D'; ++row) {
-        for (int col = 1; col <= 20; ++col) {
-            Seat* newSeat = new Seat;
-            newSeat->seatId = to_string(col) + row;
-            newSeat->passenger = NULL;
-            newSeat->next = NULL;
+    struct CityNode {
+        string cityName;
+        RouteNode* routesHead;  // Linked list of routes (connections)
+        CityNode* nextCity;
+    };
 
-            if (!wagon->seatsHead) {
-                wagon->seatsHead = newSeat;
-            } else {
-                tail->next = newSeat;
+    // Function to create a new city node
+    CityNode* createCityNode(const string& cityName) {
+        CityNode* newCity = new CityNode;
+        newCity->cityName = cityName;
+        newCity->routesHead = NULL;
+        newCity->nextCity = NULL;
+        return newCity;
+    }
+
+    // Function to create a new train
+    Train* createTrain(int id, CityNode* origin, CityNode* destination, const string* stations, int numStations) {
+        Train* newTrain = new Train;
+        newTrain->id = id;
+        newTrain->origin = origin;
+        newTrain->destination = destination;
+        newTrain->numStations = numStations;
+        for (int i = 0; i < numStations; ++i) {
+            newTrain->stoppingStations[i] = stations[i];
+        }
+        newTrain->wagonsHead = NULL;
+        newTrain->nextTrain = NULL;
+
+        Wagon* tail = NULL;
+        for (int i = 1; i <= 6; ++i) {  // Initialize 6 wagons per train
+            Wagon* newWagon = new Wagon;
+            newWagon->number = i;
+            newWagon->seatsHead = NULL;
+            newWagon->next = NULL;
+
+            Seat* seatTail = NULL;
+            for (char row = 'A'; row <= 'D'; ++row) {
+                for (int col = 1; col <= 20; ++col) {
+                    Seat* newSeat = new Seat;
+                    newSeat->seatId = to_string(col) + row;
+                    newSeat->passenger = NULL;
+                    newSeat->next = NULL;
+
+                    if (!newWagon->seatsHead) {
+                        newWagon->seatsHead = newSeat;
+                    } else {
+                        seatTail->next = newSeat;
+                    }
+                    seatTail = newSeat;
+                }
             }
-            tail = newSeat;
+
+            if (!newTrain->wagonsHead) {
+                newTrain->wagonsHead = newWagon;
+            } else {
+                tail->next = newWagon;
+            }
+            tail = newWagon;
         }
-    }
-    return wagon;
-}
 
-// Function to initialize a train with wagons.
-Train* createTrain(int id, const string* stations, int stationCount, int numWagons) {
-    Train* train = new Train;
-    train->id = id;
-    train->numStations = stationCount;
-    for (int i = 0; i < stationCount; ++i) {
-        train->stoppingStations[i] = stations[i];
+        return newTrain;
     }
-    train->wagonsHead = NULL;
 
-    Wagon* tail = NULL;
-    for (int i = 1; i <= numWagons; ++i) {
-        Wagon* newWagon = createWagon(i);
-        if (!train->wagonsHead) {
-            train->wagonsHead = newWagon;
+    // Function to find or add a city to the graph
+    CityNode* findOrAddCity(CityNode*& head, const string& cityName) {
+        CityNode* current = head;
+        CityNode* prev = NULL;
+        while (current) {
+            if (current->cityName == cityName) {
+                return current;  // City found
+            }
+            prev = current;
+            current = current->nextCity;
+        }
+        // If city not found, create a new city node
+        CityNode* newCity = createCityNode(cityName);
+        if (!prev) {
+            head = newCity;
         } else {
-            tail->next = newWagon;
+            prev->nextCity = newCity;
         }
-        tail = newWagon;
+        return newCity;
     }
-    return train;
-}
 
-// Function to add a route to the graph (expressGraph)
-void addRouteToGraph(map<string, vector<string>>& expressGraph, const string& origin, const string& destination) {
-    expressGraph[origin].push_back(destination);
-}
+    // Function to add a bidirectional route to the graph
+    void addBidirectionalRoute(CityNode*& graphHead, int trainId, const string& originName, const string& destinationName, const string* stations, int numStations) {
+        // Find or add the origin city
+        CityNode* originCity = findOrAddCity(graphHead, originName);
 
-// Function to display all routes in the graph
-void displayRoutes(const map<string, vector<string>>& expressGraph) {
-    cout << "\nTrain Routes (Origin -> Destination):\n";
-    for (const auto& route : expressGraph) {
-        cout << route.first << " -> ";
-        for (const auto& city : route.second) {
-            cout << city << " ";
-        }
-        cout << "\n";
+        // Find or add the destination city
+        CityNode* destinationCity = findOrAddCity(graphHead, destinationName);
+
+        // Create a new train
+        Train* train = createTrain(trainId, originCity, destinationCity, stations, numStations);
+
+        // Create route from origin to destination
+        RouteNode* route1 = new RouteNode;
+        route1->destination = destinationCity;
+        route1->train = train;
+        route1->nextRoute = originCity->routesHead;
+        originCity->routesHead = route1;
+
+        // Create route from destination to origin (reverse connection)
+        RouteNode* route2 = new RouteNode;
+        route2->destination = originCity;
+        route2->train = train;
+        route2->nextRoute = destinationCity->routesHead;
+        destinationCity->routesHead = route2;
     }
-}
 
-// Function to add a passenger to a specific seat.
-bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger, map<string, vector<string>>& expressGraph) {
-    Wagon* currentWagon = train->wagonsHead;
-    for (int i = 1; i < wagonNum && currentWagon; ++i) {
-        currentWagon = currentWagon->next;
-    }
-    if (!currentWagon) return false;
-
-    Seat* currentSeat = currentWagon->seatsHead;
-    while (currentSeat) {
-        if (currentSeat->seatId == seatId && !currentSeat->passenger) {
-            currentSeat->passenger = new Passenger(passenger);
-            addRouteToGraph(expressGraph, passenger.origin, passenger.destination);  // Add route to graph
-            return true;
-        }
-        currentSeat = currentSeat->next;
-    }
-    return false;
-}
-
-// Function to search for passengers by name.
-void searchPassengersByName(const map<int, Train*>& trains, const string& firstName, const string& lastName) {
-    bool found = false;
-    for (const auto& trainPair : trains) {
-        Train* train = trainPair.second;
+    // Function to add a passenger to a specific seat
+    bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger) {
         Wagon* currentWagon = train->wagonsHead;
+        for (int i = 1; i < wagonNum && currentWagon; ++i) {
+            currentWagon = currentWagon->next;
+        }
+        if (!currentWagon) return false;
 
+        Seat* currentSeat = currentWagon->seatsHead;
+        while (currentSeat) {
+            if (currentSeat->seatId == seatId && !currentSeat->passenger) {
+                currentSeat->passenger = new Passenger(passenger);
+                return true;
+            }
+            currentSeat = currentSeat->next;
+        }
+        return false;
+    }
+
+    // Function to display passengers on a train
+    void displayPassengersOnTrain(Train* train) {
+        Wagon* currentWagon = train->wagonsHead;
         while (currentWagon) {
             Seat* currentSeat = currentWagon->seatsHead;
             while (currentSeat) {
                 if (currentSeat->passenger) {
                     Passenger* passenger = currentSeat->passenger;
-                    bool firstNameMatches = (firstName == "-" || passenger->firstName == firstName);
-                    bool lastNameMatches = (lastName == "-" || passenger->lastName == lastName);
-
-                    if (firstNameMatches && lastNameMatches) {
-                        cout << "Passenger Found: " << passenger->firstName << " " << passenger->lastName
-                             << " (ID: " << passenger->id << "), Train ID: " << train->id
-                             << ", Wagon: " << currentWagon->number << ", Seat: " << currentSeat->seatId
-                             << ", From: " << passenger->origin << " to " << passenger->destination << "\n";
-                        found = true;
-                    }
+                    cout << "Name: " << passenger->firstName << " " << passenger->lastName
+                         << ", Seat: " << currentSeat->seatId
+                         << ", Wagon: " << currentWagon->number << "\n";
                 }
                 currentSeat = currentSeat->next;
             }
             currentWagon = currentWagon->next;
         }
     }
-    if (!found) {
-        cout << "No passengers found with the given name.\n";
-    }
-}
 
-// Function to display all passengers on a train.
-void displayPassengersOnTrain(const map<int, Train*>& trains, int trainId) {
-    if (trains.find(trainId) == trains.end()) {
-        cout << "Train with ID " << trainId << " not found.\n";
-        return;
-    }
-
-    Train* train = trains.at(trainId);
-    Wagon* currentWagon = train->wagonsHead;
-
-    cout << "Passengers on Train ID: " << trainId << "\n";
-    while (currentWagon) {
-        Seat* currentSeat = currentWagon->seatsHead;
-        while (currentSeat) {
-            if (currentSeat->passenger) {
-                Passenger* passenger = currentSeat->passenger;
-                cout << "Name: " << passenger->firstName << " " << passenger->lastName
-                     << ", Seat: " << currentSeat->seatId
-                     << ", Wagon: " << currentWagon->number << "\n";
+    // Function to display the routes in the graph
+    void displayRoutes(CityNode* graphHead) {
+        cout << "\nTrain Routes (Bidirectional):\n";
+        CityNode* currentCity = graphHead;
+        while (currentCity) {
+            cout << currentCity->cityName << " -> ";
+            RouteNode* currentRoute = currentCity->routesHead;
+            while (currentRoute) {
+                cout << currentRoute->destination->cityName << " (Train " << currentRoute->train->id << ") ";
+                currentRoute = currentRoute->nextRoute;
             }
-            currentSeat = currentSeat->next;
+            cout << "\n";
+            currentCity = currentCity->nextCity;
         }
-        currentWagon = currentWagon->next;
     }
-}
 
-int main() {
-    map<int, Train*> trains;
-    map<string, vector<string>> expressGraph;  // Initialize the expressGraph
+    int main() {
+        CityNode* graphHead = NULL;
 
-    // Predefined trains.
-    string stations1[] = {"CityA", "CityB", "CityC"};
-    trains[1] = createTrain(1, stations1, 3, 6);
+        while (true) {
+            cout << "\nMenu:\n";
+            cout << "1. Add Train\n";
+            cout << "2. Add Passenger\n";
+            cout << "3. Display Routes\n";
+            cout << "4. Display Passengers on Train\n";
+            cout << "5. Exit\n";
+            cout << "Enter your choice: ";
 
-    while (true) {
-        cout << "\nMenu:\n";
-        cout << "1. Add Passenger\n";
-        cout << "2. Search Passenger by Name\n";
-        cout << "3. Display All Passengers on Train\n";
-        cout << "4. Display Routes\n";
-        cout << "5. Exit\n";
-        cout << "Enter your choice: ";
+            int choice;
+            cin >> choice;
 
-        int choice;
-        cin >> choice;
+            if (choice == 1) {
+                int trainId, numStations;
+                string origin, destination;
+                cout << "Enter Train ID: ";
+                cin >> trainId;
+                cout << "Enter Origin City: ";
+                cin >> origin;
+                cout << "Enter Destination City: ";
+                cin >> destination;
+                cout << "Enter Number of Stopping Stations: ";
+                cin >> numStations;
 
-        if (choice == 1) {
-            int trainId, wagonNum;
-            string seatId, pid, firstName, lastName, origin, destination;
+                string stations[10];
+                cin.ignore();
+                for (int i = 0; i < numStations; ++i) {
+                    cout << "Enter Station " << i + 1 << ": ";
+                    getline(cin, stations[i]);
+                }
 
-            cout << "Enter Train ID: ";
-            cin >> trainId;
-            if (trains.find(trainId) == trains.end()) {
-                cout << "Train not found.\n";
-                continue;
-            }
+                addBidirectionalRoute(graphHead, trainId, origin, destination, stations, numStations);
+                cout << "Train and routes added successfully!\n";
+            } else if (choice == 2) {
+                int trainId, wagonNum;
+                string seatId, pid, firstName, lastName, origin, destination;
 
-            cout << "Enter Wagon Number: ";
-            cin >> wagonNum;
+                cout << "Enter Train ID: ";
+                cin >> trainId;
 
-            cout << "Enter Seat ID (e.g., 1A): ";
-            cin >> seatId;
+                Train* train = NULL;
+                CityNode* currentCity = graphHead;
+                while (currentCity) {
+                    RouteNode* currentRoute = currentCity->routesHead;
+                    while (currentRoute) {
+                        if (currentRoute->train->id == trainId) {
+                            train = currentRoute->train;
+                            break;
+                        }
+                        currentRoute = currentRoute->nextRoute;
+                    }
+                    if (train) break;
+                    currentCity = currentCity->nextCity;
+                }
 
-            cout << "Enter Passenger ID: ";
-            cin >> pid;
+                if (!train) {
+                    cout << "Train not found.\n";
+                    continue;
+                }
 
-            cout << "Enter First Name: ";
-            cin.ignore();
-            getline(cin, firstName);
+                cout << "Enter Wagon Number: ";
+                cin >> wagonNum;
 
-            cout << "Enter Last Name: ";
-            getline(cin, lastName);
+                cout << "Enter Seat ID (e.g., 1A): ";
+                cin >> seatId;
 
-            cout << "Enter Origin: ";
-            getline(cin, origin);
+                cout << "Enter Passenger ID: ";
+                cin >> pid;
 
-            cout << "Enter Destination: ";
-            getline(cin, destination);
+                cout << "Enter First Name: ";
+                cin.ignore();
+                getline(cin, firstName);
 
-            if (firstName.empty() || lastName.empty()) {
-                cout << "Both first and last names are required.\n";
-                continue;
-            }
+                cout << "Enter Last Name: ";
+                getline(cin, lastName);
 
-            Passenger passenger = {pid, firstName, lastName, origin, destination, NULL};
-            if (addPassenger(trains[trainId], wagonNum, seatId, passenger, expressGraph)) {
-                cout << "Passenger added successfully!\n";
+                cout << "Enter Origin: ";
+                getline(cin, origin);
+
+                cout << "Enter Destination: ";
+                getline(cin, destination);
+
+                Passenger passenger = {pid, firstName, lastName, origin, destination, NULL};
+                if (addPassenger(train, wagonNum, seatId, passenger)) {
+                    cout << "Passenger added successfully!\n";
+                } else {
+                    cout << "Failed to add passenger. Seat may already be occupied.\n";
+                }
+            } else if (choice == 3) {
+                displayRoutes(graphHead);
+            } else if (choice == 4) {
+                int trainId;
+                cout << "Enter Train ID: ";
+                cin >> trainId;
+
+                Train* train = NULL;
+                CityNode* currentCity = graphHead;
+                while (currentCity) {
+                    RouteNode* currentRoute = currentCity->routesHead;
+                    while (currentRoute) {
+                        if (currentRoute->train->id == trainId) {
+                            train = currentRoute->train;
+                            break;
+                        }
+                        currentRoute = currentRoute->nextRoute;
+                    }
+                    if (train) break;
+                    currentCity = currentCity->nextCity;
+                }
+
+                if (!train) {
+                    cout << "Train not found.\n";
+                } else {
+                    displayPassengersOnTrain(train);
+                }
+            } else if (choice == 5) {
+                break;
             } else {
-                cout << "Failed to add passenger. Seat may already be occupied.\n";
+                cout << "Invalid choice. Please try again.\n";
             }
-        } else if (choice == 2) {
-            string firstName, lastName;
-            cout << "Enter First Name (or '-' if empty): ";
-            cin.ignore();
-            getline(cin, firstName);
-
-            cout << "Enter Last Name (or '-' if empty): ";
-            getline(cin, lastName);
-
-            searchPassengersByName(trains, firstName, lastName);
-        } else if (choice == 3) {
-            int trainId;
-            cout << "Enter Train ID: ";
-            cin >> trainId;
-            displayPassengersOnTrain(trains, trainId);
-        } else if (choice == 4) {
-            displayRoutes(expressGraph);
-        } else if (choice == 5) {
-            break;
-        } else {
-            cout << "Invalid choice. Please try again.\n";
         }
+
+        // Clean up allocated memory (omitted for brevity)
+
+        return 0;
     }
-
-    // Clean up allocated memory.
-    for (auto& trainPair : trains) {
-        Train* train = trainPair.second;
-        Wagon* currentWagon = train->wagonsHead;
-
-        while (currentWagon) {
-            Seat* currentSeat = currentWagon->seatsHead;
-            while (currentSeat) {
-                delete currentSeat->passenger;
-                Seat* tempSeat = currentSeat;
-                currentSeat = currentSeat->next;
-                delete tempSeat;
-            }
-            Wagon* tempWagon = currentWagon;
-            currentWagon = currentWagon->next;
-            delete tempWagon;
-        }
-        delete train;
-    }
-
-    return 0;
-}
