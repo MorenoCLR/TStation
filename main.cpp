@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
 
 using namespace std;
 
@@ -81,8 +82,25 @@ Train* createTrain(int id, const string* stations, int stationCount, int numWago
     return train;
 }
 
+// Function to add a route to the graph (expressGraph)
+void addRouteToGraph(map<string, vector<string>>& expressGraph, const string& origin, const string& destination) {
+    expressGraph[origin].push_back(destination);
+}
+
+// Function to display all routes in the graph
+void displayRoutes(const map<string, vector<string>>& expressGraph) {
+    cout << "\nTrain Routes (Origin -> Destination):\n";
+    for (const auto& route : expressGraph) {
+        cout << route.first << " -> ";
+        for (const auto& city : route.second) {
+            cout << city << " ";
+        }
+        cout << "\n";
+    }
+}
+
 // Function to add a passenger to a specific seat.
-bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger) {
+bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger, map<string, vector<string>>& expressGraph) {
     Wagon* currentWagon = train->wagonsHead;
     for (int i = 1; i < wagonNum && currentWagon; ++i) {
         currentWagon = currentWagon->next;
@@ -93,6 +111,7 @@ bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passen
     while (currentSeat) {
         if (currentSeat->seatId == seatId && !currentSeat->passenger) {
             currentSeat->passenger = new Passenger(passenger);
+            addRouteToGraph(expressGraph, passenger.origin, passenger.destination);  // Add route to graph
             return true;
         }
         currentSeat = currentSeat->next;
@@ -161,6 +180,7 @@ void displayPassengersOnTrain(const map<int, Train*>& trains, int trainId) {
 
 int main() {
     map<int, Train*> trains;
+    map<string, vector<string>> expressGraph;  // Initialize the expressGraph
 
     // Predefined trains.
     string stations1[] = {"CityA", "CityB", "CityC"};
@@ -171,7 +191,8 @@ int main() {
         cout << "1. Add Passenger\n";
         cout << "2. Search Passenger by Name\n";
         cout << "3. Display All Passengers on Train\n";
-        cout << "4. Exit\n";
+        cout << "4. Display Routes\n";
+        cout << "5. Exit\n";
         cout << "Enter your choice: ";
 
         int choice;
@@ -216,7 +237,7 @@ int main() {
             }
 
             Passenger passenger = {pid, firstName, lastName, origin, destination, NULL};
-            if (addPassenger(trains[trainId], wagonNum, seatId, passenger)) {
+            if (addPassenger(trains[trainId], wagonNum, seatId, passenger, expressGraph)) {
                 cout << "Passenger added successfully!\n";
             } else {
                 cout << "Failed to add passenger. Seat may already be occupied.\n";
@@ -237,6 +258,8 @@ int main() {
             cin >> trainId;
             displayPassengersOnTrain(trains, trainId);
         } else if (choice == 4) {
+            displayRoutes(expressGraph);
+        } else if (choice == 5) {
             break;
         } else {
             cout << "Invalid choice. Please try again.\n";
