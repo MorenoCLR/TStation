@@ -179,6 +179,20 @@ void addRoute(CityNode*& graphHead, int trainId, const string& originName, const
 
 // Function to add a passenger to a specific seat
 bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passenger& passenger) {
+    // Check if the Passenger ID already exists in the same train
+    Wagon* currentWagon = train->wagonsHead;
+    while (currentWagon) {
+        Seat* currentSeat = currentWagon->seatsHead;
+        while (currentSeat) {
+            if (currentSeat->passenger && currentSeat->passenger->id == passenger.id) {
+                cout << "Error: Passenger ID " << passenger.id << " already exists in this train.\n";
+                return false;  // Duplicate Passenger ID found in the same train
+            }
+            currentSeat = currentSeat->next;
+        }
+        currentWagon = currentWagon->next;
+    }
+
     // Validate if the train serves the specified origin and destination
     bool originFound = false, destinationFound = false;
     StationNode* currentStation = train->stationsHead;
@@ -205,11 +219,14 @@ bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passen
     }
 
     // Find the specified wagon
-    Wagon* currentWagon = train->wagonsHead;
+    currentWagon = train->wagonsHead;
     for (int i = 1; i < wagonNum && currentWagon; ++i) {
         currentWagon = currentWagon->next;
     }
-    if (!currentWagon) return false;  // Wagon not found
+    if (!currentWagon) {
+        cout << "Error: Wagon number not found.\n";
+        return false;  // Wagon not found
+    }
 
     // Find the specified seat in the wagon
     Seat* currentSeat = currentWagon->seatsHead;
@@ -220,6 +237,8 @@ bool addPassenger(Train* train, int wagonNum, const string& seatId, const Passen
         }
         currentSeat = currentSeat->next;
     }
+
+    cout << "Error: Seat not found or already occupied.\n";
     return false;  // Seat not found or already occupied
 }
 
